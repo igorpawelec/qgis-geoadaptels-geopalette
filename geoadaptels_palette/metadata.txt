@@ -1,0 +1,12 @@
+[general]
+name=GeoAdaptels + GeoPalette
+qgisMinimumVersion=3.28
+description=Colour-space conversion and seeded/adaptive superpixel segmentation for forestry orthophotos.
+version=0.4.0
+author=Igor Pawelec
+email=
+about=QGIS Processing provider wrapping the pygeoadaptels and pygeopalette Python packages: adaptels, SICLE, seeded region growing (grow_seeds), connectivity enforcement, vectorization, and 15 colour-space conversions. The algorithms stay in the packages; this plugin is glue. Depends on pygeoadaptels and pygeopalette (installed from GitHub on first run).
+tracker=https://github.com/igorpawelec/pygeoadaptels/issues
+repository=https://github.com/igorpawelec/pygeoadaptels
+experimental=True
+deprecated=False

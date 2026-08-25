@@ -1,0 +1,22 @@
+# Build artefacts
+dist/
+*.zip
+
+# The vendored packages are copied in at build time from the sibling
+# checkouts, so committing them would only let the copy drift from the
+# packages it was cut from.
+geoadaptels_palette/vendor/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# GDAL sidecars
+*.aux.xml
