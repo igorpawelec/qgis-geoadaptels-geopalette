@@ -28,10 +28,13 @@ class GeoAdaptelsProvider(QgsProcessingProvider):
         return "geoadaptels"
 
     def name(self):
-        return "pygeopalette + Adaptels"
+        # Kept identical to `name=` in metadata.txt on purpose: the Plugin
+        # Manager reads that one and the Processing toolbox reads this one, and
+        # two spellings of the same plugin read as two different things.
+        return "GeoAdaptels + GeoPalette"
 
     def longName(self):
-        return ("pygeopalette + Adaptels (superpixels, seeded growing, "
+        return ("GeoAdaptels + GeoPalette (superpixels, seeded growing, "
                 "colour spaces)")
 
     def icon(self):

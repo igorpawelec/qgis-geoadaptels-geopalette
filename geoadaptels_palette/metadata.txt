@@ -2,11 +2,23 @@
 name=GeoAdaptels + GeoPalette
 qgisMinimumVersion=3.28
 description=Colour-space conversion and seeded/adaptive superpixel segmentation for forestry orthophotos.
-version=0.4.0
+version=0.4.1
 author=Igor Pawelec
-email=
-about=QGIS Processing provider wrapping the pygeoadaptels and pygeopalette Python packages: adaptels, SICLE, seeded region growing (grow_seeds), connectivity enforcement, vectorization, and 15 colour-space conversions. The algorithms stay in the packages; this plugin is glue. Depends on pygeoadaptels and pygeopalette (installed from GitHub on first run).
-tracker=https://github.com/igorpawelec/pygeoadaptels/issues
-repository=https://github.com/igorpawelec/pygeoadaptels
+email=igor.pawelec@urk.edu.pl
+about=QGIS Processing provider wrapping the pygeoadaptels and pygeopalette Python packages: adaptels, SICLE, seeded region growing (grow_seeds), connectivity enforcement, vectorization, and 15 colour-space conversions. The algorithms stay in the packages; this plugin is glue. Both packages are bundled inside the plugin, so they need no download; numba, rasterio and fiona are installed into QGIS's Python on first run.
+icon=icon.png
+homepage=https://github.com/igorpawelec/qgis-geoadaptels-geopalette
+tracker=https://github.com/igorpawelec/qgis-geoadaptels-geopalette/issues
+repository=https://github.com/igorpawelec/qgis-geoadaptels-geopalette
+category=Analysis
+tags=raster,segmentation,superpixels,colour,forestry,remote sensing,orthophoto
 experimental=True
 deprecated=False
+changelog=0.4.1 -- plugin icon in the Plugin Manager, provider named GeoPalette + GeoAdaptels, metadata points at the plugin's own repository.
+    0.4.0 -- renamed to match the renamed packages; packages bundled in the zip.
+    0.3.0 -- the two pure-Python packages ship inside the plugin: no git, no download for them.
+    0.2.2 -- label rasters get contrasting colours instead of an all-black palette.
+    0.2.1 -- fixed a phantom output that made QGIS report a missing layer.
+    0.2.0 -- styled results, advanced parameters collapsed, help with the dead-tree recipe.
+    0.1.1 -- dependency bootstrap resolves QGIS's real interpreter.
+    0.1.0 -- first release: six algorithms in the Processing toolbox.
