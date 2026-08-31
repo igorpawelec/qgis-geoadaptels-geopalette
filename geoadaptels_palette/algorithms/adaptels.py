@@ -1,6 +1,7 @@
 """Adaptels -- scale-adaptive superpixels. Wraps create_adaptels."""
 from qgis.core import (
     QgsProcessingAlgorithm,
+    QgsProcessingParameterBand,
     QgsProcessingParameterBoolean,
     QgsProcessingParameterEnum,
     QgsProcessingParameterNumber,
@@ -16,6 +17,7 @@ DISTANCES = ["minkowski", "cosine", "angular"]
 
 class AdaptelsAlgorithm(QgsProcessingAlgorithm):
     INPUT = "INPUT"
+    BANDS = "BANDS"
     THRESHOLD = "THRESHOLD"
     DISTANCE = "DISTANCE"
     MINKOWSKI_P = "MINKOWSKI_P"
@@ -54,6 +56,12 @@ class AdaptelsAlgorithm(QgsProcessingAlgorithm):
             "<i>direction</i> of the spectral vector, so the same material "
             "lit differently &mdash; a crown in sun and in shade &mdash; "
             "stays one region. <code>minkowski</code> will split it.</p>"
+            "<p><b>Bands:</b> empty means all of them, which is usually what "
+            "you want &mdash; adaptels compare whole spectral vectors, and on "
+            "a 4-band ortho the infrared is the band that separates dead "
+            "crowns best. Pick a subset to segment on fewer bands, or a single "
+            "band to segment on that one alone. Band order does not matter "
+            "here; only which bands are included.</p>"
             "<p>Adaptels compete for pixels, which can leave one label in "
             "two separate patches (about 10% of them). Harmless for a "
             "lookup, not harmless for zonal statistics &mdash; run "
@@ -62,6 +70,13 @@ class AdaptelsAlgorithm(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterRasterLayer(
             self.INPUT, "Input raster"))
+        # Empty means every band, which is both the old behaviour and the right
+        # default: adaptels compare whole spectral vectors, and dropping the
+        # infrared throws away the band that separates dead crowns best.
+        # Selecting one band segments on that band alone.
+        self.addParameter(QgsProcessingParameterBand(
+            self.BANDS, "Bands to use (leave empty for all)", None,
+            self.INPUT, optional=True, allowMultiple=True))
         self.addParameter(QgsProcessingParameterNumber(
             self.THRESHOLD, "threshold (metric-dependent)",
             QgsProcessingParameterNumber.Double, defaultValue=60.0,
@@ -88,18 +103,23 @@ class AdaptelsAlgorithm(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         require_packages(feedback)
-        raster_path = self.parameterAsRasterLayer(
-            parameters, self.INPUT, context).source()
+        layer = self.parameterAsRasterLayer(parameters, self.INPUT, context)
+        raster_path = layer.source()
+        n_bands = layer.bandCount()
+        bands = self.parameterAsInts(parameters, self.BANDS, context) or []
         out = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         distance = DISTANCES[self.parameterAsEnum(
             parameters, self.DISTANCE, context)]
-        n = core.run_adaptels(
-            raster_path, out,
-            threshold=self.parameterAsDouble(parameters, self.THRESHOLD, context),
-            distance=distance,
-            minkowski_p=self.parameterAsDouble(parameters, self.MINKOWSKI_P, context),
-            queen_topology=self.parameterAsBool(parameters, self.QUEEN, context),
-            normalize=self.parameterAsBool(parameters, self.NORMALIZE, context))
+        feedback.pushInfo(
+            f"Segmenting on bands {bands or list(range(1, n_bands + 1))}")
+        with core.band_subset(raster_path, bands, n_bands) as src:
+            n = core.run_adaptels(
+                src, out,
+                threshold=self.parameterAsDouble(parameters, self.THRESHOLD, context),
+                distance=distance,
+                minkowski_p=self.parameterAsDouble(parameters, self.MINKOWSKI_P, context),
+                queen_topology=self.parameterAsBool(parameters, self.QUEEN, context),
+                normalize=self.parameterAsBool(parameters, self.NORMALIZE, context))
         feedback.pushInfo(f"{n} adaptels")
         styling.style_label_raster(context, out)
         return {self.OUTPUT: out}

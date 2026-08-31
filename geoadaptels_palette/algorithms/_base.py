@@ -65,6 +65,49 @@ def warm_jit(feedback=None):
     _WARMED = True
 
 
+def band_hint(raster_path, rgb, feedback):
+    """Say so when the band picked as red looks like infrared.
+
+    Vegetation is dark in red and bright in near-infrared, so over a forested
+    sample the ratio of the two separates cleanly: measured against known files,
+    a CIR raster gives about 2.1 and a true-colour one about 0.86. Anything past
+    1.25 means the band being fed to the conversion as red is almost certainly
+    the infrared one.
+
+    **This only reports.** Guessing the band order for the operator is how the
+    silent version of this mistake happens, and the database's own inventory
+    report already got two rasters wrong this way. A wrong band assignment is
+    not an error either -- running a colour space over (NIR, R, G) deliberately
+    is a real technique -- so it must not stop the run.
+    """
+    if feedback is None:
+        return
+    try:
+        import numpy as np
+        import rasterio
+        from rasterio.windows import Window
+
+        with rasterio.open(raster_path) as src:
+            w = min(1024, src.width)
+            h = min(1024, src.height)
+            win = Window((src.width - w) // 2, (src.height - h) // 2, w, h)
+            r = src.read(int(rgb[0]), window=win).astype("float64")
+            g = src.read(int(rgb[1]), window=win).astype("float64")
+        ok = np.isfinite(r) & np.isfinite(g) & (r != 0) & (g != 0)
+        if ok.sum() < 1000:
+            return
+        ratio = float(np.median(r[ok]) / max(np.median(g[ok]), 1e-6))
+        if ratio > 1.25:
+            feedback.pushInfo(
+                f"Note: band {rgb[0]} is {ratio:.2f}x brighter than band "
+                f"{rgb[1]} over this sample, which is what near-infrared looks "
+                f"like, not red. If this is a CIR or NRGB raster, set the band "
+                f"numbers to match it -- the conversion treats them as R, G, B "
+                f"exactly as given.")
+    except Exception:
+        pass
+
+
 def require_packages(feedback):
     ok, missing = ensure_dependencies(feedback)
     if not ok:

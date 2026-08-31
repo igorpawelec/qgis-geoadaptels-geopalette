@@ -15,10 +15,68 @@ bit-identical parity.
 Copyright (C) 2026 Igor Pawelec. Licence: GPLv3.
 """
 
+import contextlib
 import glob
 import os
 import shutil
 import tempfile
+
+
+# ── band selection ─────────────────────────────────────────────────────
+
+@contextlib.contextmanager
+def band_subset(raster_path, bands, n_source_bands):
+    """Present `raster_path` as exactly `bands`, in that order.
+
+    The packages read bands positionally -- pygeopalette's ``convert_raster``
+    documents "bands 1-3 used as R, G, B", and the segmentations use every band
+    they are given. That is wrong the moment the infrared is not where the code
+    assumes: the same operator can hold `krynki1_4b.tif` (R,G,B,NIR) and
+    `krynki_nrgb_2024.tif` (NIR,R,G,B), and no fixed assumption is right for
+    both. Rather than reorder pixels, this hands the package a **GDAL VRT**: a
+    few kilobytes of XML pointing at the source bands, with no pixel data
+    copied. Measured on a 130 M pixel float32 scene: 3.5 kB, and values, nodata,
+    CRS and geotransform all come through unchanged. Copying three bands out to
+    a real file would have cost about 1.5 GB per run.
+
+    Yields the original path when the selection is already every band of the
+    source in order, so the ordinary case costs nothing at all. The VRT is
+    removed on exit.
+
+    GDAL's Python bindings ship with QGIS, so the import is safe here; it is
+    still guarded, and a failure falls back to the source path rather than
+    failing the run.
+    """
+    want = [int(b) for b in (bands or []) if int(b) > 0]
+    if not want or want == list(range(1, int(n_source_bands) + 1)):
+        yield raster_path
+        return
+    # Build first, yield once. Yielding from inside both the try and the except
+    # would resume the generator a second time when the caller's own block
+    # raises, which swallows that exception behind a RuntimeError.
+    vrt = None
+    try:
+        from osgeo import gdal
+        gdal.UseExceptions()
+        fd, path = tempfile.mkstemp(suffix=".vrt")
+        os.close(fd)
+        gdal.Translate(path, raster_path, bandList=want, format="VRT")
+        vrt = path
+    except Exception:
+        if vrt and os.path.exists(vrt):
+            try:
+                os.remove(vrt)
+            except OSError:
+                pass
+        vrt = None
+    try:
+        yield vrt or raster_path
+    finally:
+        if vrt and os.path.exists(vrt):
+            try:
+                os.remove(vrt)
+            except OSError:
+                pass
 
 
 # ── colour spaces ──────────────────────────────────────────────────────

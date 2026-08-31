@@ -3,18 +3,22 @@ convert_raster through a temp-dir adapter (the package writes into a directory,
 not a single file)."""
 from qgis.core import (
     QgsProcessingAlgorithm,
+    QgsProcessingParameterBand,
     QgsProcessingParameterEnum,
     QgsProcessingParameterRasterDestination,
     QgsProcessingParameterRasterLayer,
 )
 
 from .. import core, styling
-from ._base import require_packages, warm_jit
+from ._base import band_hint, require_packages, warm_jit
 
 
 class ConvertColourSpaceAlgorithm(QgsProcessingAlgorithm):
     INPUT = "INPUT"
     SPACE = "SPACE"
+    RED = "RED"
+    GREEN = "GREEN"
+    BLUE = "BLUE"
     OUTPUT = "OUTPUT"
 
     def __init__(self):
@@ -56,7 +60,16 @@ class ConvertColourSpaceAlgorithm(QgsProcessingAlgorithm):
             "average); exposing those needs a change in pygeopalette itself. "
             "<code>jch</code> is a fast stand-in, not CIECAM02.</p>"
             "<p>Nodata is honoured: source nodata comes out as nodata rather "
-            "than being converted as if it were black.</p>")
+            "than being converted as if it were black.</p>"
+            "<p><b>Set the band numbers to match your raster.</b> The "
+            "conversions are defined on red, green and blue, and the defaults "
+            "1/2/3 are right only for a true-colour image. A CIR raster is "
+            "(NIR, R, G) and an NRGB one puts the infrared first, so leaving "
+            "the defaults there converts the wrong three bands and calls the "
+            "result CIELAB. Running a space over a false-colour triple on "
+            "purpose is a legitimate technique &mdash; just do it knowingly. "
+            "The log warns when the band picked as red looks like "
+            "infrared.</p>")
 
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterRasterLayer(
@@ -65,6 +78,14 @@ class ConvertColourSpaceAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterEnum(
             self.SPACE, "Target colour space", options=self.spaces,
             defaultValue=default))
+        # Which band is which. The conversions are defined on R, G, B; on a CIR
+        # or NRGB raster the first three bands are not that, and the result
+        # would be a false-colour transform wearing a colour-space name.
+        for key, label, dflt in ((self.RED, "Red band", 1),
+                                 (self.GREEN, "Green band", 2),
+                                 (self.BLUE, "Blue band", 3)):
+            self.addParameter(QgsProcessingParameterBand(
+                key, label, dflt, self.INPUT))
         self.addParameter(QgsProcessingParameterRasterDestination(
             self.OUTPUT, "Converted raster"))
 
@@ -75,12 +96,18 @@ class ConvertColourSpaceAlgorithm(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         require_packages(feedback)
-        raster_path = self.parameterAsRasterLayer(
-            parameters, self.INPUT, context).source()
+        layer = self.parameterAsRasterLayer(parameters, self.INPUT, context)
+        raster_path = layer.source()
+        n_bands = layer.bandCount()
         out = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         space = self.spaces[self.parameterAsEnum(
             parameters, self.SPACE, context)]
-        feedback.pushInfo(f"Converting to {space}")
-        core.run_convert_colourspace(raster_path, space, out)
+        rgb = [self.parameterAsInt(parameters, k, context)
+               for k in (self.RED, self.GREEN, self.BLUE)]
+        feedback.pushInfo(f"Converting to {space} from bands "
+                          f"R={rgb[0]}, G={rgb[1]}, B={rgb[2]}")
+        band_hint(raster_path, rgb, feedback)
+        with core.band_subset(raster_path, rgb, n_bands) as src:
+            core.run_convert_colourspace(src, space, out)
         styling.style_stretched_raster(context, out)
         return {self.OUTPUT: out}

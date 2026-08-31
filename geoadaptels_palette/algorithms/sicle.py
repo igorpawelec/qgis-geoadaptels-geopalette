@@ -1,6 +1,7 @@
 """SICLE superpixels -- you set the count. Wraps create_sicle."""
 from qgis.core import (
     QgsProcessingAlgorithm,
+    QgsProcessingParameterBand,
     QgsProcessingParameterNumber,
     QgsProcessingParameterRasterDestination,
     QgsProcessingParameterRasterLayer,
@@ -12,6 +13,7 @@ from ._base import advanced, require_packages, warm_jit
 
 class SicleAlgorithm(QgsProcessingAlgorithm):
     INPUT = "INPUT"
+    BANDS = "BANDS"
     N_SEGMENTS = "N_SEGMENTS"
     N_OVERSAMPLING = "N_OVERSAMPLING"
     N_ITERATIONS = "N_ITERATIONS"
@@ -57,6 +59,10 @@ class SicleAlgorithm(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterRasterLayer(
             self.INPUT, "Input raster"))
+        # Empty means every band -- the old behaviour and the right default.
+        self.addParameter(QgsProcessingParameterBand(
+            self.BANDS, "Bands to use (leave empty for all)", None,
+            self.INPUT, optional=True, allowMultiple=True))
         self.addParameter(QgsProcessingParameterNumber(
             self.N_SEGMENTS, "n_segments (desired count)",
             QgsProcessingParameterNumber.Integer, defaultValue=200,
@@ -84,19 +90,24 @@ class SicleAlgorithm(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         require_packages(feedback)
-        raster_path = self.parameterAsRasterLayer(
-            parameters, self.INPUT, context).source()
+        layer = self.parameterAsRasterLayer(parameters, self.INPUT, context)
+        raster_path = layer.source()
+        n_bands = layer.bandCount()
+        bands = self.parameterAsInts(parameters, self.BANDS, context) or []
         out = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         sal_layer = self.parameterAsRasterLayer(
             parameters, self.SALIENCY, context)
         saliency_file = sal_layer.source() if sal_layer is not None else None
-        n = core.run_sicle(
-            raster_path, out,
-            n_segments=self.parameterAsInt(parameters, self.N_SEGMENTS, context),
-            n_oversampling=self.parameterAsInt(parameters, self.N_OVERSAMPLING, context),
-            n_iterations=self.parameterAsInt(parameters, self.N_ITERATIONS, context),
-            saliency_file=saliency_file,
-            random_state=self.parameterAsInt(parameters, self.RANDOM_STATE, context))
+        feedback.pushInfo(
+            f"Segmenting on bands {bands or list(range(1, n_bands + 1))}")
+        with core.band_subset(raster_path, bands, n_bands) as src:
+            n = core.run_sicle(
+                src, out,
+                n_segments=self.parameterAsInt(parameters, self.N_SEGMENTS, context),
+                n_oversampling=self.parameterAsInt(parameters, self.N_OVERSAMPLING, context),
+                n_iterations=self.parameterAsInt(parameters, self.N_ITERATIONS, context),
+                saliency_file=saliency_file,
+                random_state=self.parameterAsInt(parameters, self.RANDOM_STATE, context))
         feedback.pushInfo(f"{n} superpixels")
         styling.style_label_raster(context, out)
         return {self.OUTPUT: out}
