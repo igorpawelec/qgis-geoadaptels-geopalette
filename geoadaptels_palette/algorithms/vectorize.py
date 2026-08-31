@@ -8,7 +8,7 @@ from qgis.core import (
 )
 
 from .. import core, styling
-from ._base import advanced, require_packages
+from ._base import advanced, require_packages, warm_jit
 
 CONNECTIVITY = ["4", "8"]
 
@@ -60,6 +60,11 @@ class VectorizeAlgorithm(QgsProcessingAlgorithm):
             defaultValue=True)))
         self.addParameter(QgsProcessingParameterVectorDestination(
             self.OUTPUT, "Polygons"))
+
+    def prepareAlgorithm(self, parameters, context, feedback):
+        # Main thread. The numba kernels must be compiled here -- see warm_jit.
+        warm_jit(feedback)
+        return True
 
     def processAlgorithm(self, parameters, context, feedback):
         require_packages(feedback)

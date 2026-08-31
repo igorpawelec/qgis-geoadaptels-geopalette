@@ -16,7 +16,7 @@ from qgis.core import (
 )
 
 from .. import core, styling
-from ._base import advanced, require_packages
+from ._base import advanced, require_packages, warm_jit
 
 
 class GrowSeedsAlgorithm(QgsProcessingAlgorithm):
@@ -112,6 +112,11 @@ class GrowSeedsAlgorithm(QgsProcessingAlgorithm):
 
     def _optional_set(self, parameters, key):
         return parameters.get(key) is not None and parameters.get(key) != ""
+
+    def prepareAlgorithm(self, parameters, context, feedback):
+        # Main thread. The numba kernels must be compiled here -- see warm_jit.
+        warm_jit(feedback)
+        return True
 
     def processAlgorithm(self, parameters, context, feedback):
         require_packages(feedback)

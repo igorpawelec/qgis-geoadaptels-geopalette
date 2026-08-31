@@ -7,7 +7,7 @@ from qgis.core import (
 )
 
 from .. import core, styling
-from ._base import advanced, require_packages
+from ._base import advanced, require_packages, warm_jit
 
 
 class SicleAlgorithm(QgsProcessingAlgorithm):
@@ -76,6 +76,11 @@ class SicleAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterNumber.Integer, defaultValue=42)))
         self.addParameter(QgsProcessingParameterRasterDestination(
             self.OUTPUT, "SICLE labels"))
+
+    def prepareAlgorithm(self, parameters, context, feedback):
+        # Main thread. The numba kernels must be compiled here -- see warm_jit.
+        warm_jit(feedback)
+        return True
 
     def processAlgorithm(self, parameters, context, feedback):
         require_packages(feedback)

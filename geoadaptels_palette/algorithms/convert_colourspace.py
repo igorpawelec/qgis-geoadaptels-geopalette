@@ -9,7 +9,7 @@ from qgis.core import (
 )
 
 from .. import core, styling
-from ._base import require_packages
+from ._base import require_packages, warm_jit
 
 
 class ConvertColourSpaceAlgorithm(QgsProcessingAlgorithm):
@@ -67,6 +67,11 @@ class ConvertColourSpaceAlgorithm(QgsProcessingAlgorithm):
             defaultValue=default))
         self.addParameter(QgsProcessingParameterRasterDestination(
             self.OUTPUT, "Converted raster"))
+
+    def prepareAlgorithm(self, parameters, context, feedback):
+        # Main thread. The numba kernels must be compiled here -- see warm_jit.
+        warm_jit(feedback)
+        return True
 
     def processAlgorithm(self, parameters, context, feedback):
         require_packages(feedback)

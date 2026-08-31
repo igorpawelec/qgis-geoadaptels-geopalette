@@ -12,7 +12,7 @@ from qgis.core import (
 )
 
 from .. import core, styling
-from ._base import require_packages
+from ._base import require_packages, warm_jit
 
 
 class EnforceConnectivityAlgorithm(QgsProcessingAlgorithm):
@@ -62,6 +62,11 @@ class EnforceConnectivityAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterNumber.Integer, defaultValue=0, minValue=0))
         self.addParameter(QgsProcessingParameterRasterDestination(
             self.OUTPUT, "Connectivity-enforced labels"))
+
+    def prepareAlgorithm(self, parameters, context, feedback):
+        # Main thread. The numba kernels must be compiled here -- see warm_jit.
+        warm_jit(feedback)
+        return True
 
     def processAlgorithm(self, parameters, context, feedback):
         require_packages(feedback)

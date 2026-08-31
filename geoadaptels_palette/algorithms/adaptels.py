@@ -9,7 +9,7 @@ from qgis.core import (
 )
 
 from .. import core, styling
-from ._base import advanced, require_packages
+from ._base import advanced, require_packages, warm_jit
 
 DISTANCES = ["minkowski", "cosine", "angular"]
 
@@ -80,6 +80,11 @@ class AdaptelsAlgorithm(QgsProcessingAlgorithm):
             defaultValue=False)))
         self.addParameter(QgsProcessingParameterRasterDestination(
             self.OUTPUT, "Adaptel labels"))
+
+    def prepareAlgorithm(self, parameters, context, feedback):
+        # Main thread. The numba kernels must be compiled here -- see warm_jit.
+        warm_jit(feedback)
+        return True
 
     def processAlgorithm(self, parameters, context, feedback):
         require_packages(feedback)
