@@ -28,7 +28,35 @@ from qgis.core import (
 # and a slow unique-value scan, so those fall back to QGIS's default.
 MAX_PALETTE_CLASSES = 20000
 
+# Above this many pixels, do not even ask for the label count.
+#
+# `bandStatistics` with the default arguments is a full unsampled pass over
+# every band statistic, and post-processors run on the GUI thread inside the
+# task-completion handler. On a full orthophoto -- 130 M pixels, ~2.4 M adaptels
+# at threshold 60 -- that pass blocks the main thread long enough for Qt to
+# re-enter the event loop while the finished task is being torn down, which is
+# a use-after-free, i.e. an access violation rather than a catchable error.
+#
+# The scan was only ever there to discover that the raster has far too many
+# labels to paint a palette from. A raster this size always does, so the size
+# alone answers the question in O(1) and the expensive call never happens.
+MAX_PALETTE_PIXELS = 25_000_000
+
 _KEEP_ALIVE = []
+
+
+def _usable(layer):
+    """Whether this layer is safe to touch.
+
+    A post-processor can be handed a layer that never materialised. SIP raises
+    RuntimeError for an object it knows has been deleted, so that case is
+    catchable; the bare ``None`` case is not caught by anything downstream and
+    has to be tested before the first attribute access.
+    """
+    try:
+        return layer is not None and layer.isValid()
+    except Exception:
+        return False
 
 
 class LabelRasterPostProcessor(QgsProcessingLayerPostProcessorInterface):
@@ -40,8 +68,19 @@ class LabelRasterPostProcessor(QgsProcessingLayerPostProcessorInterface):
     """
 
     def postProcessLayer(self, layer, context, feedback=None):
+        if not _usable(layer):
+            return
         try:
             provider = layer.dataProvider()
+            # Cheap gate first -- see MAX_PALETTE_PIXELS. Nothing below this
+            # line may touch the pixels of a large raster.
+            px = int(provider.xSize()) * int(provider.ySize())
+            if px > MAX_PALETTE_PIXELS:
+                if feedback is not None:
+                    feedback.pushInfo(
+                        f"{px} pixels is past {MAX_PALETTE_PIXELS}; leaving "
+                        f"the default renderer rather than scanning the band.")
+                return
             stats = provider.bandStatistics(1)
             n = int(stats.maximumValue) - int(stats.minimumValue) + 1
             if n > MAX_PALETTE_CLASSES:
@@ -101,6 +140,8 @@ class PolygonPostProcessor(QgsProcessingLayerPostProcessorInterface):
         self._width = width
 
     def postProcessLayer(self, layer, context, feedback=None):
+        if not _usable(layer):
+            return
         try:
             symbol = QgsFillSymbol.createSimple({
                 "color": "0,0,0,0",
@@ -124,6 +165,8 @@ class StretchedRasterPostProcessor(QgsProcessingLayerPostProcessorInterface):
     """
 
     def postProcessLayer(self, layer, context, feedback=None):
+        if not _usable(layer):
+            return
         try:
             layer.setContrastEnhancement(
                 _stretch_enum(), _cumulative_cut_enum())
@@ -163,6 +206,16 @@ def _register(context, dest_id, processor):
     try:
         if not dest_id:
             return False
+        # `layerToLoadOnCompletionDetails` is `mLayersToLoadOnCompletion[id]`
+        # on the C++ side, and QMap::operator[] *inserts* a default entry when
+        # the key is absent. Calling it for an id QGIS was never going to load
+        # therefore invents a layer-to-load that points at nothing, and the
+        # post-processor attached to it is later handed a dangling layer --
+        # an access violation inside on_complete, not a catchable exception.
+        # So ask first, and only then reach for the details.
+        if hasattr(context, "willLoadLayerOnCompletion"):
+            if not context.willLoadLayerOnCompletion(dest_id):
+                return False
         details = context.layerToLoadOnCompletionDetails(dest_id)
         if details is None:
             return False
