@@ -1,6 +1,7 @@
 [general]
 name=GeoAdaptels + GeoPalette
 qgisMinimumVersion=3.28
+supportsQt6=True
 description=Colour-space conversion and seeded/adaptive superpixel segmentation for forestry orthophotos.
 version=0.5.3
 author=Igor Pawelec
