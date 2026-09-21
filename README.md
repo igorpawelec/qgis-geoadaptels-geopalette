@@ -1,5 +1,9 @@
 # GeoAdaptels + GeoPalette for QGIS
 
+[![tests](https://github.com/igorpawelec/qgis-geoadaptels-geopalette/actions/workflows/tests.yml/badge.svg)](https://github.com/igorpawelec/qgis-geoadaptels-geopalette/actions/workflows/tests.yml)
+[![Release](https://img.shields.io/github/v/release/igorpawelec/qgis-geoadaptels-geopalette)](https://github.com/igorpawelec/qgis-geoadaptels-geopalette/releases)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+
 A QGIS **Processing provider** that exposes the user-facing functions of
 [pygeoadaptels](https://github.com/igorpawelec/pygeoadaptels) and
 [pygeopalette](https://github.com/igorpawelec/pygeopalette) as Processing
