@@ -72,7 +72,6 @@ def main():
 
         # End-to-end correctness anchor: the dead-tree recipe from
         # grow_seeds_parametry.md -- ~6174 px assigned.
-        import numpy as np
         import rasterio
         core.run_grow_seeds(
             LAB, SHP, out_labels=j("g.tif"), out_polys=j("g.gpkg"),
