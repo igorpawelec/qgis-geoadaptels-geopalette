@@ -145,13 +145,18 @@ def main():
                            {"INPUT": RGB, "THRESHOLD": 60.0, "DISTANCE": 0, "MINKOWSKI_P": 2.0, "QUEEN": False,
                             "NORMALIZE": False, "OUTPUT": os.path.join(OUT, "adaptels.tif")}, context=ctx)
         log(f"adaptels -> {a}")
+        c = processing.run("geoadaptels:convert_colourspace",
+                           {"INPUT": RGB, "SPACE": 8, "RED": 1, "GREEN": 2, "BLUE": 3,
+                            "OUTPUT": os.path.join(OUT, "lab_from_plugin.tif")}, context=ctx)   # exercises band_ranges in the worker
+        log(f"convert_colourspace -> {c}")
 
         crowns = outline_layer(g["POLYGONS"], "crowns", width="0.6")
         render([pts, crowns, rgb], rgb.extent(), os.path.join(OUT, "map_grow_seeds.png"))
 
         labels = QgsRasterLayer(a["OUTPUT"], "adaptels")
         from geoadaptels_palette.styling import LabelRasterPostProcessor
-        LabelRasterPostProcessor().postProcessLayer(labels, ctx)          # the palette the plugin applies on load
+        n_labels = int(labels.dataProvider().bandStatistics(1).maximumValue) + 1
+        LabelRasterPostProcessor(n_labels).postProcessLayer(labels, ctx)  # the palette the plugin applies on load
         render([labels], rgb.extent(), os.path.join(OUT, "map_adaptels.png"))
         from qgis.core import QgsRectangle
         res = rgb.rasterUnitsPerPixelX(); e = rgb.extent()

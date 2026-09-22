@@ -4,7 +4,7 @@ qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
 supportsQt6=True
 description=Colour-space conversion and seeded/adaptive superpixel segmentation for forestry orthophotos.
-version=0.5.4
+version=0.5.5
 author=Igor Pawelec
 email=igor.pawelec@urk.edu.pl
 about=QGIS Processing provider wrapping the pygeoadaptels and pygeopalette Python packages: adaptels, SICLE, seeded region growing (grow_seeds), connectivity enforcement, vectorization, and 15 colour-space conversions. The algorithms stay in the packages; this plugin is glue. Both packages are bundled inside the plugin, so they need no download; numba, rasterio and fiona are installed into QGIS's Python on first run.
@@ -16,7 +16,8 @@ category=Analysis
 tags=raster,segmentation,superpixels,colour,forestry,remote sensing,orthophoto
 experimental=True
 deprecated=False
-changelog=0.5.4 -- declares qgisMaximumVersion 4.99 and supportsQt6, so QGIS 4 no longer lists the plugin as incompatible (designed for 3.28-3.99) at the next start; no code change.
+changelog=0.5.5 -- no post-processor reads a raster any more: the label palette is built from the label count the algorithm already has and the colour-space stretch from band ranges measured in the worker, so the on_complete access violation a statistics pass on the GUI thread could trigger (0.2.1-0.5.4, found in GeoSnag) is gone; the binary dependencies install into the plugin's own libs/ folder instead of the user site, which every Python 3.12 on the machine reads (pip --user had broken a conda environment); a zip reinstall drops the previously imported vendored modules; the post-processor is no longer kept alive after QGIS took ownership of it.
+    0.5.4 -- declares qgisMaximumVersion 4.99 and supportsQt6, so QGIS 4 no longer lists the plugin as incompatible (designed for 3.28-3.99) at the next start; no code change.
     0.5.3 -- bundles pygeoadaptels 0.10.4: grow_seeds(fill_holes=True) no longer takes hours on a large orthophoto (pocket census in O(pixels), bit-identical labels).
     0.5.2 -- bundles pygeoadaptels 0.10.3: Enforce Connectivity with a minimum fragment size is about a hundred times faster (551 s to 5.4 s on a full-orthophoto window) with a bit-identical result.
     0.5.1 -- band selection actually works: the packages were writing their output in the input format, so the VRT that carries a band selection made them fail. Bundles pygeoadaptels 0.10.2 and pygeopalette 0.7.1.

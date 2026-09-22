@@ -22,6 +22,7 @@ class Plugin:
         # properly if something is genuinely missing.
         try:
             from . import vendor_loader
+            vendor_loader.purge_stale()       # a zip reinstall must not keep last week's vendored modules
             vendor_loader.activate()
         except Exception:
             pass

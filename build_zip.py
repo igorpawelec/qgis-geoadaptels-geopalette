@@ -13,7 +13,7 @@ import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PLUGIN = "geoadaptels_palette"
-SKIP_DIRS = {"__pycache__"}
+SKIP_DIRS = {"__pycache__", "libs"}      # libs/ is what deps.py installs on the operator's machine, never shipped
 SKIP_EXT = {".pyc", ".pyo"}
 
 # Pure-Python packages copied into vendor/ at build time, so the plugin needs

@@ -109,5 +109,5 @@ class SicleAlgorithm(QgsProcessingAlgorithm):
                 saliency_file=saliency_file,
                 random_state=self.parameterAsInt(parameters, self.RANDOM_STATE, context))
         feedback.pushInfo(f"{n} superpixels")
-        styling.style_label_raster(context, out)
+        styling.style_label_raster(context, out, n)
         return {self.OUTPUT: out}

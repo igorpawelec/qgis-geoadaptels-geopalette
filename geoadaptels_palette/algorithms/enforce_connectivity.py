@@ -77,5 +77,5 @@ class EnforceConnectivityAlgorithm(QgsProcessingAlgorithm):
             raster_path, out,
             min_size=self.parameterAsInt(parameters, self.MIN_SIZE, context))
         feedback.pushInfo(f"{n} labels after enforcing connectivity")
-        styling.style_label_raster(context, out)
+        styling.style_label_raster(context, out, n)
         return {self.OUTPUT: out}

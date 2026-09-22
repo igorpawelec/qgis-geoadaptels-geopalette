@@ -59,4 +59,7 @@ def test_styling_and_deps_helpers():
     specs = deps._install_specs()
     assert any(s.startswith("numba") for s in specs) and any(s.startswith("rasterio") for s in specs)
     assert set(vendor_loader.VENDORED) == {"pygeoadaptels", "pygeopalette"}
-    assert callable(deps.manual_hint) and deps.manual_hint()
+    assert callable(deps.manual_hint) and "--target" in deps.manual_hint()
+    assert vendor_loader.LIBS_DIR.endswith("libs")
+    assert vendor_loader.purge_stale() == 0
+    assert callable(styling.band_ranges)

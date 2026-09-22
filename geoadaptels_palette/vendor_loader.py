@@ -19,7 +19,8 @@ log line says which one was loaded, so there is no guessing.
 
 What this does *not* solve: the packages still need ``numba`` (pygeoadaptels)
 and ``rasterio``/``fiona`` (file I/O). Those carry binaries, cannot be
-vendored, and remain deps.py's job.
+vendored, and are deps.py's job -- installed into ``libs/`` next to
+``vendor/``, private to this plugin (see deps.py for why not the user site).
 
 Copyright (C) 2026 Igor Pawelec. Licence: GPLv3.
 """
@@ -29,6 +30,9 @@ import os
 import sys
 
 VENDOR_DIR = os.path.join(os.path.dirname(__file__), "vendor")
+# The binary dependencies deps.py installs, private to this plugin (never the
+# user site, which every Python of the same minor version on the machine reads).
+LIBS_DIR = os.path.join(os.path.dirname(__file__), "libs")
 
 # Pure-Python packages that can ride along. Anything with a compiled extension
 # must NOT be listed here -- it would have to match the interpreter's version
@@ -43,12 +47,44 @@ def _spec(name):
         return None
 
 
+def purge_stale():
+    """Forget vendored modules already imported from a previous plugin zip.
+
+    Installing a new zip replaces the files under vendor/, but the modules
+    imported from the old files stay in sys.modules for the rest of the QGIS
+    session, so the operator keeps running last week's package code with
+    this week's plugin. Called once on plugin load; only modules whose file
+    lies under the vendor directory are dropped, an installed copy is left
+    alone. Returns the number of modules dropped.
+    """
+    root = os.path.abspath(VENDOR_DIR)
+    dropped = 0
+    for name in list(sys.modules):
+        top = name.split(".")[0]
+        if top not in VENDORED:
+            continue
+        mod = sys.modules.get(name)
+        origin = getattr(mod, "__file__", None) or ""
+        if origin and os.path.abspath(origin).startswith(root):
+            del sys.modules[name]
+            dropped += 1
+    if dropped:
+        importlib.invalidate_caches()
+    return dropped
+
+
 def activate(feedback=None):
-    """Put the vendored copies on sys.path if the packages are not installed.
+    """Put libs/ and, if the packages are not installed, the vendored copies on sys.path.
 
     Returns a dict of ``name -> "installed" | "vendored" | "missing"``. Safe to
     call repeatedly; never raises.
     """
+    # The plugin-private binary dependencies. Appended, so anything QGIS's own
+    # Python already provides keeps winning.
+    if os.path.isdir(LIBS_DIR) and LIBS_DIR not in sys.path:
+        sys.path.append(LIBS_DIR)
+        importlib.invalidate_caches()
+
     status = {}
     need_vendor = False
     for name in VENDORED:

@@ -162,6 +162,10 @@ class GrowSeedsAlgorithm(QgsProcessingAlgorithm):
         kwargs["fill_holes"] = self.parameterAsBool(
             parameters, self.FILL_HOLES, context)
 
+        # Label i is the region grown from the i-th point, so the point count is the label count.
+        points_src = self.parameterAsSource(parameters, self.POINTS, context)
+        n_points = points_src.featureCount() if points_src is not None else -1
+        n_points = int(n_points) if n_points and n_points > 0 else None
         feedback.pushInfo(f"grow_seeds parameters: {kwargs}")
         core.run_grow_seeds(raster_path, points_path,
                             out_labels=out_labels, out_polys=out_polys,
@@ -170,7 +174,7 @@ class GrowSeedsAlgorithm(QgsProcessingAlgorithm):
         # Cosmetic, and deliberately after the work: a styling failure must
         # never cost the operator a finished segmentation.
         if out_labels:
-            styling.style_label_raster(context, out_labels)
+            styling.style_label_raster(context, out_labels, n_points)
         if out_polys:
             styling.style_polygons(context, out_polys)
 

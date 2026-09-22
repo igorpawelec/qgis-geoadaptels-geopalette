@@ -23,3 +23,6 @@ Thumbs.db
 
 # Intermediate captures and outputs of www/figures.py; the composed figures are committed
 www/_capture/
+
+# The binary dependencies deps.py installs on the operator's machine
+geoadaptels_palette/libs/

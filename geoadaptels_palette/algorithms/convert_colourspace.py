@@ -109,5 +109,10 @@ class ConvertColourSpaceAlgorithm(QgsProcessingAlgorithm):
         band_hint(raster_path, rgb, feedback)
         with core.band_subset(raster_path, rgb, n_bands) as src:
             core.run_convert_colourspace(src, space, out)
-        styling.style_stretched_raster(context, out)
+        try:                                   # measured here, in the worker, never in the post-processor
+            ranges = styling.band_ranges(out)
+        except Exception as e:
+            feedback.pushInfo(f"Could not measure the band ranges for styling: {e}")
+            ranges = []
+        styling.style_stretched_raster(context, out, ranges)
         return {self.OUTPUT: out}

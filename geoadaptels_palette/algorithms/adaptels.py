@@ -121,5 +121,5 @@ class AdaptelsAlgorithm(QgsProcessingAlgorithm):
                 queen_topology=self.parameterAsBool(parameters, self.QUEEN, context),
                 normalize=self.parameterAsBool(parameters, self.NORMALIZE, context))
         feedback.pushInfo(f"{n} adaptels")
-        styling.style_label_raster(context, out)
+        styling.style_label_raster(context, out, n)
         return {self.OUTPUT: out}
