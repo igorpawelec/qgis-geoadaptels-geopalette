@@ -20,3 +20,6 @@ Thumbs.db
 
 # GDAL sidecars
 *.aux.xml
+
+# Intermediate captures and outputs of www/figures.py; the composed figures are committed
+www/_capture/
